@@ -1,6 +1,36 @@
+//这个部分单独来测试和ChatGPT的交流
 
-const data = 'eyJrZXkiOm51bGwsImRpZ2VzdCI6bnVsbCwiYXR0YWNobWVudF9pZCI6IjA2NWI2OWQzLWRlNjYtNDNmYS04ZDk3LTkwMzk1ZWUwNWE3NSIsIm1pbWVfdHlwZSI6ImltYWdlL3BuZyIsInNpemUiOjM2OTM5LCJuYW1lIjpudWxsLCJ3aWR0aCI6MzI2LCJoZWlnaHQiOjMxNCwidGh1bWJuYWlsIjoiTDZSTWIkP15WRWs9LjhuT2J2YUpUMGl3Yl5uTyIsImR1cmF0aW9uIjpudWxsLCJ3YXZlZm9ybSI6bnVsbCwiY2FwdGlvbiI6bnVsbCwiY3JlYXRlZF9hdCI6IjIwMjMtMDQtMDRUMDg6MDQ6MjQuNDgwNzYxMTMzWiIsInNoYXJlYWJsZSI6bnVsbH0';
-const decodedData = atob(data.split(',')[1]); // 解码 base64 数据
-const img = document.createElement('img');
-img.src = 'data:image/jpeg;base64,' + decodedData; // 设置图片的 src 属性
-document.body.appendChild(img);
+
+//API reference-Chat下面复制过来的，修改了元素
+const config = require("./config");
+const { Configuration, OpenAIApi } = require("openai");
+
+const configuration = new Configuration({
+  apiKey: config.OPENAI_API_KEY,
+});
+const openai = new OpenAIApi(configuration);
+
+async function chineseToEnglish(params) {
+  const completion = await openai.createChatCompletion({
+    model: "gpt-3.5-turbo",
+    messages: [
+      {
+        role: "system",
+        content:
+          "You are a helpful assistant that translates Chinese to English.",
+      },
+      {
+        role: "user",
+        content:
+          'Translate the following Chinese text to English: "请问如何学习编程"',
+      },
+    ],
+  });
+  //console.log(completion)
+  console.log(completion.data.choices[0].message);
+}
+
+chineseToEnglish();
+//
+
+//

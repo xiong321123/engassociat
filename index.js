@@ -42,12 +42,17 @@ client.loopBlaze({
 
       if (checkl === "chinese") {
         RawZhData = rawData;
-        let RawEnData = (await translate("chinese", RawZhData)).translateZHToEnRec;//
-        tokens += (await translate("chinese", RawZhData)).translateZHToEnTokens;
-        let ReturnEnData = (await conversation(RawEnData)).conversationRec;//
-        tokens +=(await conversation(RawEnData)).conversationTokens;//
-        let ReturnZhData = (await translate("english", ReturnEnData)).translateEnToZhRec//
-        tokens +=(await translate("english", ReturnEnData)).translateEnToZhTokens;//
+        let translateZHToEnAll = await translate("chinese", RawZhData);
+        let RawEnData = translateZHToEnAll.translateZHToEnRec;//
+        tokens += translateZHToEnAll.translateZHToEnTokens;
+
+        let conversationAll = await conversation(RawEnData);
+        let ReturnEnData = conversationAll.conversationRec;//
+        tokens += conversationAll.conversationTokens;//
+
+        let translateEnToZhAll = await translate("english", ReturnEnData);
+        let ReturnZhData = translateEnToZhAll.translateEnToZhRec//
+        tokens += translateEnToZhAll.translateEnToZhTokens;//
         //现在在做中文提问机器人回应的部分
         console.log(`total tokens ${tokens}`);
         const costs=0.002/1000*tokens
@@ -60,16 +65,19 @@ client.loopBlaze({
       } else if (checkl === "english") {
         //如果输入的是英文字符
         RawEnData = rawData;
-        let RawZhData = (await translate("english", RawEnData)).translateEnToZhRec;//
-        tokens += (await translate("english", RawZhData)).translateEnToZhTokens;
+        let translateEnToZhAll = await translate("english", RawEnData);
+        let RawZhData = translateEnToZhAll.translateEnToZhRec;//
+        tokens += translateEnToZhAll.translateEnToZhTokens;
         console.log(`translateEnToZhTokens ${tokens}`);
 
-        let ReturnEnData = (await conversation(RawEnData)).conversationRec;//
-        tokens +=(await conversation(RawEnData)).conversationTokens;//
+        let conversationAll = await conversation(RawEnData);
+        let ReturnEnData = conversationAll.conversationRec;//
+        tokens +=conversationAll.conversationTokens;//
         console.log(`conversationTokens ${tokens}`);
 
-        let ReturnZhData = (await translate("english", ReturnEnData)).translateEnToZhRec//
-        tokens +=(await translate("english", ReturnEnData)).translateEnToZhTokens;//
+        let translateEnToZhReturnAll = await translate("english", ReturnEnData);
+        let ReturnZhData = translateEnToZhReturnAll.translateEnToZhRec//
+        tokens +=translateEnToZhReturnAll.translateEnToZhTokens;//
         console.log(`translateEnToZhTokens ${tokens}`);
 
         console.log(`total tokens ${tokens}`);

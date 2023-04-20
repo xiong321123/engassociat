@@ -21,7 +21,9 @@ const configuration = new Configuration({
   apiKey: config.OPENAI_API_KEY,
 });
 const openai = new OpenAIApi(configuration);
-
+//先放在这里
+let PreviousQuestion = "";//上次疑问
+let Previousanswer = "";//上次问的问题
 
 //这下面的是和mixin的通讯
 client.loopBlaze({
@@ -38,11 +40,6 @@ client.loopBlaze({
         console.log(translateWord.translateTokens)
         console.log(translateWord.translateRec)
         client.sendMessageText(msg.user_id, `> ${message1} \n> ${translateWord.translateRec}`);
-        
-
-
-
-
       }
       else{
         
@@ -57,10 +54,21 @@ client.loopBlaze({
         RawZhData = rawData;
         let translateZHToEnAll = await translate("chinese", RawZhData);
         let RawEnData = translateZHToEnAll.translateRec;//
+        let RawEnDataO = translateZHToEnAll.translateRec;;
         tokens += translateZHToEnAll.translateTokens;
+
+        RawEnData = PreviousQuestion+Previousanswer+RawEnData;//上次疑问+上次回答+本次输入=本次疑问
+        PreviousQuestion = RawEnData//本次疑问作为下一次的上次疑问
+        console.log(`对话函数运行前GPT被问到的问题：${RawEnData}`);
 
         let conversationAll = await conversation(RawEnData);
         let ReturnEnData = conversationAll.conversationRec;//
+
+        Previousanswer = ReturnEnData//本次回答作为下一次的上次回答
+        console.log(`下一次对话函数运行前GPT的回复背景：${Previousanswer}`);
+
+
+
         tokens += conversationAll.conversationTokens;//
 
         let translateEnToZhAll = await translate("english", ReturnEnData);
@@ -72,19 +80,28 @@ client.loopBlaze({
         console.log(`total costs ${costs}`);
 
 
-        rec = `>用户\n中文原文:  ${RawZhData} \nEnglish translation：${RawEnData}\n\n< 助手\n英文回应：${ReturnEnData}\n中文回应：${ReturnZhData}`;
+        rec = `>用户\n中文原文:  ${RawZhData} \nEnglish translation：${RawEnDataO}\n\n< 助手\n英文回应：${ReturnEnData}\n中文回应：${ReturnZhData}`;
         //就按照中文进行翻译和输出
         client.sendMessageText(msg.user_id, rec);
       } else if (checkl === "english") {
         //如果输入的是英文字符
         RawEnData = rawData;
+        RawEnDataO = rawData;
         let translateEnToZhAll = await translate("english", RawEnData);
         let RawZhData = translateEnToZhAll.translateRec;//
         tokens += translateEnToZhAll.translateTokens;
         console.log(`translateTokens ${tokens}`);
 
+        RawEnData = PreviousQuestion+Previousanswer+RawEnData;//上次疑问+上次回答+本次输入
+        PreviousQuestion = RawEnData//本次疑问作为下一次的上次疑问
+        console.log(`对话函数运行前GPT被问到的问题：${RawEnData}`);
+
         let conversationAll = await conversation(RawEnData);
         let ReturnEnData = conversationAll.conversationRec;//
+
+        Previousanswer = ReturnEnData//本次回答作为下一次的上次回答
+        console.log(`对话函数运行前GPT被问到的问题：${RawEnData}`);
+
         tokens +=conversationAll.conversationTokens;//
         console.log(`conversationTokens ${tokens}`);
 
@@ -97,7 +114,7 @@ client.loopBlaze({
         const costs=0.002/1000*tokens
         console.log(`total costs ${costs}`);
 
-        rec = `>用户\nEnglish original text:  ${RawEnData} \n中文译文：${RawZhData}\n\n< 助手\n英文回应：${ReturnEnData}\n中文回应：${ReturnZhData}`;
+        rec = `>用户\nEnglish original text:  ${RawEnDataO} \n中文译文：${RawZhData}\n\n< 助手\n英文回应：${ReturnEnData}\n中文回应：${ReturnZhData}`;
         client.sendMessageText(msg.user_id, rec);
       } else {
         client.sendMessageText(
@@ -204,11 +221,11 @@ async function conversation(text) {
     {
       role: "system",
       content:
-      "I want you to act as a spoken English teacher and improver. I will speak to you in English and you will reply to me in English to practice my spoken English. If my inputs are not a complete sentence or question, use the inputs to generate a sentence to make a conversation. I want you to keep your reply neat, limiting the reply to 100 words.  I want you to generate a sentence to make a conversationstrictly correct my grammar mistakes, typos, and factual errors. You need to understand the content of my new reply in the context of our previous exchange. You always ask me a question in your reply. Now let's start practicing, you could ask me a question first. Remember, I want you to strictly correct my grammar mistakes, typos, and factual errors.",
+      "I want you to act as a spoken English teacher and improver. I will speak to you in English and you will reply to me in English to practice my spoken English. If my content is a sentence or a question, you start the conversation based on my content. If my content is not a sentence or a question, use the content to generate a sentence to make a conversation. I want you to keep your reply neat, limiting the reply to 100 words.  I want you to generate a sentence to make a conversationstrictly correct my grammar mistakes, typos, and factual errors. You need to understand the content of my new reply in the context of our previous exchange. You always ask me a question in your reply. Now let's start practicing, you could ask me a question first. Remember, I want you to strictly correct my grammar mistakes, typos, and factual errors.",
     },
     {
       role: "user",
-      content: `start a conversation with '${text}'.`,
+      content: `${text}`,
   },
   ]
 });
@@ -223,3 +240,8 @@ async function conversation(text) {
 
   //return completion.data.choices[0].message.content.replace(/^"(.*)"$/, "$1");
 }
+
+
+
+
+

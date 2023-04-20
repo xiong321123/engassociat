@@ -1,4 +1,4 @@
-//测试cost费用,此方法会导致conversation，translate中文到英语，translate英语到中文这些函数会被调用两次，而书输出两次，产生更多的tokens。
+//
 const { BlazeClient } = require("mixin-node-sdk");
 const config = require("./config");
 const {
@@ -16,6 +16,7 @@ const client = new BlazeClient(
   { parse: true, syncAck: true }
 );
 const { Configuration, OpenAIApi } = require("openai");
+const whitelist = require("./whitelist");
 const configuration = new Configuration({
   apiKey: config.OPENAI_API_KEY,
 });
@@ -26,16 +27,28 @@ const openai = new OpenAIApi(configuration);
 client.loopBlaze({
   async onMessage(msg) {
     console.log(msg);
-    if (msg.category === "PLAIN_TEXT") {
-      //仅支持普通文本
-      const rawData = msg.data.toString(); //转为string
-      //判断为中英文
-      // const chineseReg = /^[\u4e00-\u9fa5]+$/; // 匹配中文字符的正则表达式
-      // const englishReg = /^[A-Za-z]+$/; // 匹配英文字符的正则表达式
+    if (msg.category === "PLAIN_TEXT" && whitelist.user_id.includes(msg.user_id) &&typeof msg.data === "string") 
+    {
+      if(msg.data.toString().substring(0,1) === "/"){
+        const message1 = msg.data.toString().substring(1);
+        const checkl = checklanguage(message1);
+        const translateWord = await translate(checkl,message1);
+        console.log(`translateWord is:${translateWord}`)
+        console.log(translateWord)
+        console.log(translateWord.translateTokens)
+        console.log(translateWord.translateRec)
+        client.sendMessageText(msg.user_id, `> ${message1} \n> ${translateWord.translateRec}`);
+        
+
+
+
+
+      }
+      else{
+        
+      const rawData = msg.data.toString(); //转为string        
       let RawZhData = ""; //初始化的
-      let RawEnData = "";
-      // let ReturnZhData = ""; //初始化的
-      // let ReturnEnData = "";
+      let RawEnData = "";   
       let rec = "";
       tokens = 0;
       const checkl = checklanguage(msg.data);
@@ -43,16 +56,16 @@ client.loopBlaze({
       if (checkl === "chinese") {
         RawZhData = rawData;
         let translateZHToEnAll = await translate("chinese", RawZhData);
-        let RawEnData = translateZHToEnAll.translateZHToEnRec;//
-        tokens += translateZHToEnAll.translateZHToEnTokens;
+        let RawEnData = translateZHToEnAll.translateRec;//
+        tokens += translateZHToEnAll.translateTokens;
 
         let conversationAll = await conversation(RawEnData);
         let ReturnEnData = conversationAll.conversationRec;//
         tokens += conversationAll.conversationTokens;//
 
         let translateEnToZhAll = await translate("english", ReturnEnData);
-        let ReturnZhData = translateEnToZhAll.translateEnToZhRec//
-        tokens += translateEnToZhAll.translateEnToZhTokens;//
+        let ReturnZhData = translateEnToZhAll.translateRec//
+        tokens += translateEnToZhAll.translateTokens;//
         //现在在做中文提问机器人回应的部分
         console.log(`total tokens ${tokens}`);
         const costs=0.002/1000*tokens
@@ -66,9 +79,9 @@ client.loopBlaze({
         //如果输入的是英文字符
         RawEnData = rawData;
         let translateEnToZhAll = await translate("english", RawEnData);
-        let RawZhData = translateEnToZhAll.translateEnToZhRec;//
-        tokens += translateEnToZhAll.translateEnToZhTokens;
-        console.log(`translateEnToZhTokens ${tokens}`);
+        let RawZhData = translateEnToZhAll.translateRec;//
+        tokens += translateEnToZhAll.translateTokens;
+        console.log(`translateTokens ${tokens}`);
 
         let conversationAll = await conversation(RawEnData);
         let ReturnEnData = conversationAll.conversationRec;//
@@ -76,9 +89,9 @@ client.loopBlaze({
         console.log(`conversationTokens ${tokens}`);
 
         let translateEnToZhReturnAll = await translate("english", ReturnEnData);
-        let ReturnZhData = translateEnToZhReturnAll.translateEnToZhRec//
-        tokens +=translateEnToZhReturnAll.translateEnToZhTokens;//
-        console.log(`translateEnToZhTokens ${tokens}`);
+        let ReturnZhData = translateEnToZhReturnAll.translateRec//
+        tokens +=translateEnToZhReturnAll.translateTokens;//
+        console.log(`translateTokens ${tokens}`);
 
         console.log(`total tokens ${tokens}`);
         const costs=0.002/1000*tokens
@@ -89,14 +102,17 @@ client.loopBlaze({
       } else {
         client.sendMessageText(
           msg.user_id,
-          "仅支持中英文Only English and Chinese are supportied"
+          "仅支持文本消息Only text are supportied"
         );
       }
+
+      }
+      
     }
     else {
       client.sendMessageText(
         msg.user_id,
-        "仅支持文本消息Only text are supportied"
+        "你的ID必须经过授权，且内容必须是文本消息 Your ID must be authorized and the content must be a text message"
       )
     }
   },
@@ -144,9 +160,9 @@ async function translate(language, text) {
     // console.log(completion.data.choices[0].message);
     //console.log(completion.data.choices[0].message.content.replace(/^"(.*)"$/, "$1"));
     console.log(completion.data.usage.total_tokens);
-    const translateZHToEnTokens = completion.data.usage.total_tokens
-    const translateZHToEnRec = completion.data.choices[0].message.content.replace(/^"(.*)"$/, "$1")
-    return {translateZHToEnTokens:translateZHToEnTokens,translateZHToEnRec:translateZHToEnRec}
+    const translateTokens = completion.data.usage.total_tokens
+    const translateRec = completion.data.choices[0].message.content.replace(/^"(.*)"$/, "$1")
+    return {translateTokens:translateTokens,translateRec:translateRec}
     //completion.data.choices[0].message.content.replace(/^"(.*)"$/, "$1");
   } else if (language === "english") {
     const completion = await openai.createChatCompletion({
@@ -159,7 +175,7 @@ async function translate(language, text) {
         },
         {
           role: "user",
-          content: `Translate the following English text to Chinese And only answer the translated text.: "${text}"`,
+          content: `Translate the following English text to simplified Chinese And only answer the translated text.: "${text}"`,
         },
       ],
     });
@@ -168,9 +184,9 @@ async function translate(language, text) {
     //console.log(completion.data.choices[0].message.content.replace(/^"(.*)"$/, "$1"));
     console.log(completion.data.usage.total_tokens);
 
-    const translateEnToZhTokens = completion.data.usage.total_tokens
-    const translateEnToZhRec = completion.data.choices[0].message.content.replace(/^"(.*)"$/, "$1")
-    return {translateEnToZhTokens:translateEnToZhTokens,translateEnToZhRec:translateEnToZhRec}
+    const translateTokens = completion.data.usage.total_tokens
+    const translateRec = completion.data.choices[0].message.content.replace(/^"(.*)"$/, "$1")
+    return {translateTokens:translateTokens,translateRec:translateRec}
 
 
 
@@ -188,11 +204,11 @@ async function conversation(text) {
     {
       role: "system",
       content:
-      "I want you to act as a spoken English teacher and improver. I will speak to you in English and you will reply to me in English to practice my spoken English. I want you to keep your reply neat, limiting the reply to 100 words.  I want you to strictly correct my grammar mistakes, typos, and factual errors. You need to understand the content of my new reply in the context of our previous exchange. You always ask me a question in your reply. Now let's start practicing, you could ask me a question first. Remember, I want you to strictly correct my grammar mistakes, typos, and factual errors.",
+      "I want you to act as a spoken English teacher and improver. I will speak to you in English and you will reply to me in English to practice my spoken English. If my inputs are not a complete sentence or question, use the inputs to generate a sentence to make a conversation. I want you to keep your reply neat, limiting the reply to 100 words.  I want you to generate a sentence to make a conversationstrictly correct my grammar mistakes, typos, and factual errors. You need to understand the content of my new reply in the context of our previous exchange. You always ask me a question in your reply. Now let's start practicing, you could ask me a question first. Remember, I want you to strictly correct my grammar mistakes, typos, and factual errors.",
     },
     {
       role: "user",
-      content: `${text}`,
+      content: `start a conversation with '${text}'.`,
   },
   ]
 });

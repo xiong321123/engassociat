@@ -31,12 +31,42 @@ const openai = new OpenAIApi(configuration);
 let PreviousQuestion = "";//上次疑问
 let Previousanswer = "";//上次问的问题
 
+
+
 //这下面的是和mixin的通讯
 client.loopBlaze({
   async onMessage(msg) {
     console.log(msg);
-    if (msg.category === "PLAIN_TEXT" && whitelist.user_id.includes(msg.user_id) &&typeof msg.data === "string") 
-    {
+    if ((msg.category === "PLAIN_TEXT" || msg.category === "PLAIN_AUDIO") && whitelist.user_id.includes(msg.user_id) ) {
+    var rawData=''
+    {if(msg.category === "PLAIN_AUDIO"){//这一步来处理转换为MP3
+      console.log(msg.data_base64)
+      client.showAttachment(msg.data.attachment_id).then(console.log)//输出
+      const oggUrl =(await client.showAttachment(msg.data.attachment_id)).view_url//这个文件如何下载保存转换
+      console.log(oggUrl)
+      // 调用转换函数
+       outputPath = `./audiocach/audio5.mp3`;
+      
+      await convertOGGtoMP3(oggUrl)
+        .then(mp3Path => console.log(mp3Path))
+        .catch(error => console.error(error));
+
+      //const resp = await openai.createTranslation(//OpenAi进行翻译，createTranscription就是转为文字
+      const resp = await openai.createTranscription(//OpenAi进行翻译，createTranscription就是转为文字
+       fs.createReadStream("./audiocach/audio5.mp3"),
+       "whisper-1"
+        );
+        
+      //console.log('下面是验证区——————')
+      //console.log(resp)//实现了汉语音频翻译为文字
+      console.log(resp.data.text)
+      rawData=resp.data.text
+      console.log(rawData)
+    }
+      
+
+    else if(msg.category === "PLAIN_TEXT"){
+      //___________________________
       if(msg.data.toString().substring(0,1) === "/"){
         const message1 = msg.data.toString().substring(1);
         const checkl = checklanguage(message1);
@@ -48,13 +78,24 @@ client.loopBlaze({
         client.sendMessageText(msg.user_id, `> ${message1} \n> ${translateWord.translateRec}`);
       }
       else{
+        if(msg.data.toString().substring(0,1) === "。"){//输入句号可以清空前文记录，进行重置
+          PreviousQuestion =''
+          Previousanswer=''
+
+        }
+        else{
         
-      const rawData = msg.data.toString(); //转为string        
+       rawData = msg.data.toString(); //转为string  
+       console.log(`此处的rawdata是${rawData}`)
+
+    console.log(`此处的rawdata1是${rawData}`)
+
       let RawZhData = ""; //初始化的
       let RawEnData = "";   
       let rec = "";
       tokens = 0;
-      const checkl = checklanguage(msg.data);
+      const checkl = checklanguage(rawData);//这里有修改，原来是msg.data.
+      console.log(`此处的checkl是${checkl}`)
 
       if (checkl === "chinese") {
         RawZhData = rawData;
@@ -72,8 +113,6 @@ client.loopBlaze({
 
         Previousanswer = ReturnEnData//本次回答作为下一次的上次回答
         console.log(`下一次对话函数运行前GPT的回复背景：${Previousanswer}`);
-
-
 
         tokens += conversationAll.conversationTokens;//
 
@@ -128,46 +167,13 @@ client.loopBlaze({
           "仅支持文本消息Only text are supportied"
         );
       }
-
-      }
-      
-    }
-    else if(msg.category === "PLAIN_AUDIO"){//这一步来处理转换为MP3
-      console.log(msg.data_base64)
-      client.showAttachment(msg.data.attachment_id).then(console.log)//输出
-      const oggUrl =(await client.showAttachment(msg.data.attachment_id)).view_url//这个文件如何下载保存转换
-      console.log(oggUrl)
-      // 调用转换函数
-      //const oggUrl = 'https://mixin-assets-cn.zeromesh.net/mixin/attachments/1682054804-1eecd0aecb0f305dfcb592b9a3c538c3a6c1ae2952ef34c49f8eb15a620afb47';//需要将这个URL中保存的OGG格式文件下载到内存，并转化保存为dudio.mp3,以提供给下面程序转录
-       outputPath = `./audiocach/audio5.mp3`;
-      //保证命名唯一性，以URL52位以后的来命名 `./${oggUrl.substring(52)}.mp3`
-      //const outputPath = `./audio/${oggUrl.substring(52)}.mp3`
-
-
-      await convertOGGtoMP3(oggUrl)
-        .then(mp3Path => console.log(mp3Path))
-        .catch(error => console.error(error));
-
-      //const resp = await openai.createTranslation(//OpenAi进行翻译，createTranscription就是转为文字
-      const resp = await openai.createTranscription(//OpenAi进行翻译，createTranscription就是转为文字
-       fs.createReadStream("./audiocach/audio5.mp3"),
-       "whisper-1"
-        );
-        
-      //console.log('下面是验证区——————')
-      console.log(resp)//实现了汉语音频翻译为文字
-      console.log(resp.data.text)
-
-
-            
-
-
-
-    }
+      }}
+    }}}
+  
     else {
       client.sendMessageText(
         msg.user_id,
-        "你的ID必须经过授权，且内容必须是文本消息 Your ID must be authorized and the content must be a text message"
+        "你的ID必须经过授权，且内容必须是语音或文本消息 Your ID must be authorized and the content must be a text message"
       )
     }
   },
@@ -180,7 +186,7 @@ client.loopBlaze({
 function checklanguage(text) {
   const chineseReg = /^[\u4e00-\u9fa5。，！？……（）\s""‘’“”]+$/; // 匹配中文字符的正则表达式
   const englishReg = /^[A-Za-z.,!?'"()\s]+$/; // 匹配英文字符的正则表达式
-  if (chineseReg.test(text)) {
+  if (chineseReg.test(text.charAt(0))) {//只检查第一个字符
     console.log("输入的字符是中文2");
     return "chinese";
   } else if (englishReg.test(text)) {
@@ -190,9 +196,6 @@ function checklanguage(text) {
     return "unknown";
   }
 }
-
-
-
 
 
 async function translate(language, text) {
@@ -242,14 +245,10 @@ async function translate(language, text) {
     const translateTokens = completion.data.usage.total_tokens
     const translateRec = completion.data.choices[0].message.content.replace(/^"(.*)"$/, "$1")
     return {translateTokens:translateTokens,translateRec:translateRec}
-
-
-
     //return completion.data.choices[0].message.content.replace(/^"(.*)"$/, "$1");
   }
   return rec;
 }
-
 
 
 async function conversation(text) {

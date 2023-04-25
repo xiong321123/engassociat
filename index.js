@@ -1,4 +1,10 @@
-//
+//实现了语音转文字
+const fs = require('fs');
+const request = require('request');
+const ffmpegPath = require('@ffmpeg-installer/ffmpeg').path;
+const ffmpeg = require('fluent-ffmpeg');
+ffmpeg.setFfmpegPath(ffmpegPath);
+
 const { BlazeClient } = require("mixin-node-sdk");
 const config = require("./config");
 const {
@@ -126,6 +132,38 @@ client.loopBlaze({
       }
       
     }
+    else if(msg.category === "PLAIN_AUDIO"){//这一步来处理转换为MP3
+      console.log(msg.data_base64)
+      client.showAttachment(msg.data.attachment_id).then(console.log)//输出
+      const oggUrl =(await client.showAttachment(msg.data.attachment_id)).view_url//这个文件如何下载保存转换
+      console.log(oggUrl)
+      // 调用转换函数
+      //const oggUrl = 'https://mixin-assets-cn.zeromesh.net/mixin/attachments/1682054804-1eecd0aecb0f305dfcb592b9a3c538c3a6c1ae2952ef34c49f8eb15a620afb47';//需要将这个URL中保存的OGG格式文件下载到内存，并转化保存为dudio.mp3,以提供给下面程序转录
+       outputPath = `./audiocach/audio5.mp3`;
+      //保证命名唯一性，以URL52位以后的来命名 `./${oggUrl.substring(52)}.mp3`
+      //const outputPath = `./audio/${oggUrl.substring(52)}.mp3`
+
+
+      await convertOGGtoMP3(oggUrl)
+        .then(mp3Path => console.log(mp3Path))
+        .catch(error => console.error(error));
+
+      //const resp = await openai.createTranslation(//OpenAi进行翻译，createTranscription就是转为文字
+      const resp = await openai.createTranscription(//OpenAi进行翻译，createTranscription就是转为文字
+       fs.createReadStream("./audiocach/audio5.mp3"),
+       "whisper-1"
+        );
+        
+      //console.log('下面是验证区——————')
+      console.log(resp)//实现了汉语音频翻译为文字
+      console.log(resp.data.text)
+
+
+            
+
+
+
+    }
     else {
       client.sendMessageText(
         msg.user_id,
@@ -242,6 +280,27 @@ async function conversation(text) {
 }
 
 
+// 定义转换函数
+async function convertOGGtoMP3(url) {
+  return new Promise((resolve, reject) => {
+    // 下载 OGG 文件
+    const stream = request(url);
+
+    // 转换为 MP3 格式,成功了
+    const command = ffmpeg();
+    command.input(stream);
+    command.audioCodec('libmp3lame');
+    command.outputFormat('mp3');
+    command.on('end', () => {
+      // 返回转换后的 MP3 文件路径
+      resolve(outputPath);
+    });
+    command.on('error', (error) => {
+      reject(error);
+    });
+    command.save(outputPath);
+  });
+}
 
 
 

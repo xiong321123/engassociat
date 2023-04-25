@@ -10,8 +10,15 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@ffmpeg-installer/ffmpeg": "^1.1.0",
+    "ffmpeg": "^0.0.4",
+    "file-saver": "^2.0.5",
+    "fluent-ffmpeg": "^2.1.2",
+    "lamejs": "^1.2.1",
     "mixin-node-sdk": "^3.1.13",
     "mixin-web-sdk": "^1.0.5",
-    "openai": "^3.2.1"
+    "node-fetch": "^3.3.1",
+    "openai": "^3.2.1",
+    "request": "^2.88.2"
   }
 }

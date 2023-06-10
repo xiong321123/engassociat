@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>我的网页</title>
+  <style>
+    /* 在这里添加 CSS 样式 */
+    body {
+      font-family: Arial, sans-serif;
+    }
+
+    button {
+      background-color: blue;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: darkblue;
+    }
+  </style>
+</head>
+<body>
+  <h1>欢迎来到我的网页！</h1>
+  <button id="myButton">点击我！</button>
+  <script>
+    // 在这里添加 JavaScript 代码
+    document.getElementById('myButton').addEventListener('click', function() {
+      alert('你好，欢迎访问我的网页！');
+    });
+  </script>
+</body>
+</html>

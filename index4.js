@@ -31,7 +31,7 @@ function convertOGGtoMP3(url) {
 
 // 调用转换函数
 const oggUrl = 'https://mixin-assets-cn.zeromesh.net/mixin/attachments/1682054804-1eecd0aecb0f305dfcb592b9a3c538c3a6c1ae2952ef34c49f8eb15a620afb47';//需要将这个URL中保存的OGG格式文件下载到内存，并转化保存为dudio.mp3,以提供给下面程序转录
-const outputPath = `./audiocach/audio3.mp3`;
+const outputPath = `./audiocach/audio6.mp3`;
 //保证命名唯一性，以URL52位以后的来命名 `./${oggUrl.substring(52)}.mp3`
 //const outputPath = `./audio/${oggUrl.substring(52)}.mp3`
 
